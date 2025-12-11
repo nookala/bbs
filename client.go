@@ -36,7 +36,7 @@ const (
 
 var EndpointNotFoundErr = models.NewError(models.Error_InvalidResponse, fmt.Sprintf(InvalidResponseMessage, 404))
 
-//go:generate counterfeiter -generate
+//go:generate go tool counterfeiter -generate
 
 //counterfeiter:generate -o fake_bbs/fake_internal_client.go . InternalClient
 //counterfeiter:generate -o fake_bbs/fake_client.go . Client
@@ -139,6 +139,9 @@ The ExternalActualLRPClient is used to access and retire Actual LRPs
 type ExternalActualLRPClient interface {
 	// Returns all ActualLRPs matching the given ActualLRPFilter
 	ActualLRPs(lager.Logger, string, models.ActualLRPFilter) ([]*models.ActualLRP, error)
+
+	// Returns all ActualLRPs matching the given ActualLRPsByProcessGuidsFilter
+	ActualLRPsByProcessGuids(lager.Logger, string, models.ActualLRPsByProcessGuidsFilter) ([]*models.ActualLRP, error)
 
 	// Returns all ActualLRPGroups matching the given ActualLRPFilter
 	//lint:ignore SA1019 - deprecated function returning deprecated data
@@ -371,6 +374,16 @@ func (c *client) ActualLRPs(logger lager.Logger, traceID string, filter models.A
 		return nil, err
 	}
 
+	return response.ActualLrps, response.Error.ToError()
+}
+
+func (c *client) ActualLRPsByProcessGuids(logger lager.Logger, traceID string, filter models.ActualLRPsByProcessGuidsFilter) ([]*models.ActualLRP, error) {
+	request := models.ActualLRPsByProcessGuidsRequest(filter)
+	response := models.ActualLRPsByProcessGuidsResponse{}
+	err := c.doRequest(logger, traceID, ActualLRPsByProcessGuidsRoute_r0, nil, nil, &request, &response)
+	if err != nil {
+		return nil, err
+	}
 	return response.ActualLrps, response.Error.ToError()
 }
 
