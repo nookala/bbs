@@ -298,6 +298,33 @@ func (h *EvacuationController) EvacuateRunningActualLRP(
 		return keepContainer, err
 	}
 
+	dlrp, err := h.desiredLRPDB.DesiredLRPByProcessGuid(ctx, logger, guid)
+	if err != nil {
+		panic("todo test this and log")
+	}
+
+	if dlrp != nil && dlrp.UpdateStrategy == models.DesiredLRP_Recreate {
+		// First mark the lrp as evacuating and start an auction for a new instnace
+		// but no need to wait until that instance is running
+		err = h.evacuateInstance(ctx, logger, actualLRPs, targetActualLRP)
+		if err != nil {
+			logger.Error("todo decide on log", err)
+			return false, err
+		}
+
+		// Now remove the evacuating instance. We needed to add and remove it
+		// to keep with the standard event flow.
+		removedEvacuating, err := h.removeEvacuating(ctx, logger, targetActualLRP)
+		if err != nil {
+			return false, err
+		}
+
+		// We want to record this change, but I'm not sure if this is correct.
+		newLRPs = eventCalculator.RecordChange(removedEvacuating, nil, newLRPs)
+
+		return false, err
+	}
+
 	if targetActualLRP == nil || targetActualLRP.Presence == models.ActualLRP_Evacuating {
 		// Create a new Evacuating LRP or update an existing one
 		evacuating := findWithPresence(actualLRPs, models.ActualLRP_Evacuating)
